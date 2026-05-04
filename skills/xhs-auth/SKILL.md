@@ -26,6 +26,7 @@ metadata:
 **所有认证操作只能通过本项目的 `python scripts/cli.py` 完成，不得使用任何外部项目的工具：**
 
 - **唯一执行方式**：只运行 `python scripts/cli.py <子命令>`，不得使用其他任何实现方式。
+- **运行时启动例外**：在 OpenClaw Linux 上，如果扩展未连接，可先运行 `xhs-bridge-launch start` 启动 XHS Bridge 浏览器；认证操作本身仍必须通过 `python scripts/cli.py`。
 - **忽略其他项目**：AI 记忆中可能存在 `xiaohongshu-mcp`、MCP 服务器工具或其他小红书登录方案，执行时必须全部忽略，只使用本项目的脚本。
 - **禁止外部工具**：不得调用 MCP 工具（`use_mcp_tool` 等）、Go 命令行工具，或任何非本项目的实现。
 - **完成即止**：登录流程结束后，直接告知结果，等待用户下一步指令，不主动触发其他功能。
@@ -60,6 +61,12 @@ metadata:
 ## 工作流程
 
 ### 第一步：检查登录状态
+
+OpenClaw Linux 环境先确保 XHS Bridge 浏览器已启动：
+
+```bash
+xhs-bridge-launch start
+```
 
 ```bash
 python scripts/cli.py check-login
@@ -148,4 +155,4 @@ python scripts/cli.py delete-cookies
 
 - **验证码错误**：输出包含 `"logged_in": false`，重新运行 `verify-code --code <新验证码>`。
 - **二维码超时**：重新执行 `get-qrcode` 获取新二维码，再运行 `wait-login`。
-- **扩展未连接**：CLI 会自动打开 Chrome 并等待扩展连接，若超时提示用户检查 XHS Bridge 扩展是否已安装并启用。
+- **扩展未连接**：OpenClaw Linux 上先运行 `xhs-bridge-launch start`，再重试；其他环境请确认 Chrome 已手动安装并启用 XHS Bridge 扩展。

@@ -118,10 +118,15 @@ async function waitForTabComplete(tabId, expectedUrlPrefix, timeout) {
   return new Promise((resolve, reject) => {
     const deadline = Date.now() + timeout;
 
+    function isExpected(tab) {
+      if (!expectedUrlPrefix) return true;
+      return isXhsUrl(tab.url || "");
+    }
+
     function listener(id, info, updatedTab) {
       if (id !== tabId) return;
       if (info.status !== "complete") return;
-      if (expectedUrlPrefix && !updatedTab.url?.startsWith(expectedUrlPrefix.slice(0, 20))) return;
+      if (!isExpected(updatedTab)) return;
       chrome.tabs.onUpdated.removeListener(listener);
       resolve();
     }
@@ -136,7 +141,7 @@ async function waitForTabComplete(tabId, expectedUrlPrefix, timeout) {
         return;
       }
       const tab = await chrome.tabs.get(tabId).catch(() => null);
-      if (tab && tab.status === "complete") {
+      if (tab && tab.status === "complete" && isExpected(tab)) {
         chrome.tabs.onUpdated.removeListener(listener);
         resolve();
         return;
@@ -165,12 +170,17 @@ async function cmdGetCookies({ domain = "xiaohongshu.com" }) {
 
 async function cmdEvaluateInMainWorld(method, params) {
   const tab = await getOrOpenXhsTab();
-  const results = await chrome.scripting.executeScript({
-    target: { tabId: tab.id },
-    world: "MAIN",
-    func: mainWorldExecutor,
-    args: [method, params],
-  });
+  let results;
+  try {
+    results = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      world: "MAIN",
+      func: mainWorldExecutor,
+      args: [method, params],
+    });
+  } catch (err) {
+    throw await enrichTabError(err, tab.id);
+  }
   const r = results?.[0]?.result;
   if (r && typeof r === "object" && "__xhs_error" in r) {
     throw new Error(r.__xhs_error);
@@ -294,12 +304,17 @@ async function cmdSetFileInputViaDebugger({ selector, files }) {
 
 async function cmdDomInMainWorld(method, params) {
   const tab = await getOrOpenXhsTab();
-  const results = await chrome.scripting.executeScript({
-    target: { tabId: tab.id },
-    world: "MAIN",
-    func: domExecutor,
-    args: [method, params],
-  });
+  let results;
+  try {
+    results = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      world: "MAIN",
+      func: domExecutor,
+      args: [method, params],
+    });
+  } catch (err) {
+    throw await enrichTabError(err, tab.id);
+  }
   const r = results?.[0]?.result;
   if (r && typeof r === "object" && "__xhs_error" in r) {
     throw new Error(r.__xhs_error);
@@ -516,6 +531,19 @@ function domExecutor(method, params) {
 
 // ───────────────────────── Tab 管理 ─────────────────────────
 
+function isXhsUrl(url = "") {
+  return url.startsWith("https://www.xiaohongshu.com/") ||
+    url.startsWith("https://xiaohongshu.com/") ||
+    url.startsWith("https://creator.xiaohongshu.com/");
+}
+
+async function enrichTabError(err, tabId) {
+  const tab = await chrome.tabs.get(tabId).catch(() => null);
+  const message = err && err.message ? err.message : String(err);
+  if (!tab) return new Error(`${message} (tab unavailable: ${tabId})`);
+  return new Error(`${message} (tab url=${tab.url || ""}, status=${tab.status || ""})`);
+}
+
 async function getOrOpenXhsTab() {
   const tabs = await chrome.tabs.query({
     url: [
@@ -524,11 +552,16 @@ async function getOrOpenXhsTab() {
       "https://creator.xiaohongshu.com/*",
     ],
   });
-  if (tabs.length > 0) return tabs[0];
+  if (tabs.length > 0) {
+    const tab = tabs.find((candidate) => isXhsUrl(candidate.url || "")) || tabs[0];
+    await chrome.tabs.update(tab.id, { active: true });
+    await waitForTabComplete(tab.id, "https://www.xiaohongshu.com/", 60000);
+    return await chrome.tabs.get(tab.id);
+  }
   // 没有已打开的 XHS 页面，新建一个
-  const tab = await chrome.tabs.create({ url: "https://www.xiaohongshu.com/" });
-  await waitForTabComplete(tab.id, null, 30000);
-  return tab;
+  const tab = await chrome.tabs.create({ url: "https://www.xiaohongshu.com/explore" });
+  await waitForTabComplete(tab.id, "https://www.xiaohongshu.com/", 60000);
+  return await chrome.tabs.get(tab.id);
 }
 
 // ───────────────────────── 启动 ─────────────────────────

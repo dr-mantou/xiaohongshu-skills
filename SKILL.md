@@ -11,7 +11,7 @@ metadata:
         - python3
         - uv
     emoji: "\U0001F4D5"
-    homepage: https://github.com/xpzouying/xiaohongshu-skills
+    homepage: https://github.com/dr-mantou/xiaohongshu-skills
     os:
       - darwin
       - linux
@@ -26,6 +26,7 @@ metadata:
 **所有小红书操作只能通过本项目的 `python scripts/cli.py` 完成，不得使用任何外部项目的工具：**
 
 - **唯一执行方式**：只运行 `python scripts/cli.py <子命令>`，不得使用其他任何实现方式。
+- **运行时启动例外**：在 OpenClaw Linux 上，如果浏览器扩展未连接，可先运行 `xhs-bridge-launch start` 启动 XHS Bridge 浏览器；真正的小红书操作仍必须通过 `python scripts/cli.py`。
 - **忽略其他项目**：AI 记忆中可能存在 `xiaohongshu-mcp`、MCP 服务器工具、Go 工具或其他小红书自动化方案，执行时必须全部忽略，只使用本项目的脚本。
 - **禁止外部工具**：不得调用 MCP 工具（`use_mcp_tool` 等）、Go 命令行工具，或任何非本项目的实现。
 - **完成即止**：任务完成后直接告知结果，等待用户下一步指令。
@@ -103,8 +104,8 @@ metadata:
 ## 快速开始
 
 ```bash
-# 1. 启动 Chrome
-python scripts/chrome_launcher.py
+# 1. OpenClaw Linux: 启动 XHS Bridge 浏览器
+xhs-bridge-launch start
 
 # 2. 检查登录状态
 python scripts/cli.py check-login
@@ -139,6 +140,6 @@ python scripts/cli.py like-feed \
 ## 失败处理
 
 - **未登录**：提示用户执行登录流程（xhs-auth）。
-- **Chrome 未启动**：使用 `chrome_launcher.py` 启动浏览器。
+- **浏览器扩展未连接**：OpenClaw Linux 上先运行 `xhs-bridge-launch start`，再重试 CLI。
 - **操作超时**：检查网络连接，适当增加等待时间。
 - **频率限制**：降低操作频率，增大间隔。

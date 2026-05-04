@@ -113,7 +113,16 @@ def _ensure_bridge_ready(bridge_url: str) -> None:
 
 def _open_chrome() -> None:
     """尝试启动 Chrome 浏览器。"""
+    import shutil
     import subprocess
+
+    # OpenClaw Linux uses a helper that launches Chrome for Testing/Chromium
+    # with the XHS Bridge extension. Branded Chrome 137+ no longer accepts
+    # --load-extension from the command line.
+    helper = shutil.which("xhs-bridge-launch")
+    if helper and sys.platform != "win32":
+        subprocess.Popen([helper, "start"])
+        return
 
     candidates = [
         r"C:\Program Files\Google\Chrome\Application\chrome.exe",
