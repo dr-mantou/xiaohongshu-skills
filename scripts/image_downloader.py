@@ -13,8 +13,8 @@ import requests
 logger = logging.getLogger(__name__)
 
 _USER_AGENT = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    "Mozilla/5.0 (X11; Linux x86_64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"
 )
 
 # 已知图片扩展名
@@ -59,10 +59,11 @@ class ImageDownloader:
             return existing
 
         # 下载
-        parsed = urlparse(image_url)
         headers = {
             "User-Agent": _USER_AGENT,
-            "Referer": f"{parsed.scheme}://{parsed.hostname}/",
+            "Referer": "https://www.xiaohongshu.com/",
+            "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+            "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
         }
 
         resp = self._session.get(image_url, headers=headers)
@@ -94,6 +95,8 @@ class ImageDownloader:
         for ext in _IMAGE_EXTENSIONS:
             if path.endswith(ext):
                 return ext
+        if "webp" in path:
+            return ".webp"
         return ".jpg"  # 默认
 
     def _find_existing(self, url_hash: str) -> str | None:
