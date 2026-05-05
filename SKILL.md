@@ -50,6 +50,10 @@ metadata:
 - 文件路径必须使用绝对路径。
 - CLI 输出为 JSON 格式，结构化呈现给用户。
 - 操作频率不宜过高，保持合理间隔。
+- 图片处理默认关闭：普通搜索和详情阅读不得下载图片、OCR 图片或做视觉分析。
+- 只有在用户明确要求包含图片信息，或标题/正文/评论强烈暗示关键内容在图片中时，才处理图片。例如：`见图`、`图里`、`截图`、`菜单`、`清单`、`表格`、`地图`、`路线图`、`价格表`、`票价`、`优惠券`、`voucher`、`真题`、`P1/P2`、`第几张图`。
+- 需要图片信息时，先只对少量高价值候选笔记运行 `extract-feed-image-text --limit 2` 或 `--limit 3`。不得批量下载整个搜索结果页的图片。
+- OCR 只适合提取图片里的文字。地图、照片质量、空间布局、菜品外观、酒店房型等视觉语义应优先用可用的原生图像理解能力；若当前运行环境无法对本地/远程图片做视觉理解，则说明图片需要人工或视觉模型复核。
 
 ## 子技能概览
 
@@ -121,9 +125,9 @@ python scripts/cli.py search-feeds --keyword "关键词"
 python scripts/cli.py get-feed-detail \
   --feed-id FEED_ID --xsec-token XSEC_TOKEN
 
-# 6. 如笔记图片包含截图/菜单/清单/地图等信息，提取图片文字
+# 6. 可选：仅在用户要求或文本强烈提示图片含关键文字时，提取少量图片文字
 python scripts/cli.py extract-feed-image-text \
-  --feed-id FEED_ID --xsec-token XSEC_TOKEN
+  --feed-id FEED_ID --xsec-token XSEC_TOKEN --limit 2
 
 # 7. 发布图文
 python scripts/cli.py publish \

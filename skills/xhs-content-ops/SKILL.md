@@ -163,11 +163,12 @@ python scripts/cli.py search-feeds \
 python scripts/cli.py get-feed-detail \
   --feed-id FEED_ID --xsec-token XSEC_TOKEN
 ```
-5. 如果详情里的 `note.imageList` 可能包含截图、清单、菜单、地图或票价等信息，先提取图片文字：
+5. 默认不要下载图片。如果用户要求包含图片信息，或标题/正文/评论强烈提示关键文字在截图、清单、菜单、表格、地图、票价、优惠券、真题等图片中，才对少量图片提取文字：
 ```bash
 python scripts/cli.py extract-feed-image-text \
-  --feed-id FEED_ID --xsec-token XSEC_TOKEN
+  --feed-id FEED_ID --xsec-token XSEC_TOKEN --limit 2
 ```
+   OCR 只适合文字图。需要判断照片质量、空间布局、菜品外观、地图路线等视觉语义时，优先使用宿主模型的原生图像理解能力，并且只分析少量最相关图片。
 6. 针对笔记内容生成有价值的评论建议。
 7. 用户确认评论内容后发送：
 ```bash

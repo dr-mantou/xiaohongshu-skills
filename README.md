@@ -114,9 +114,9 @@ python scripts/cli.py search-feeds \
 python scripts/cli.py get-feed-detail \
   --feed-id FEED_ID --xsec-token XSEC_TOKEN
 
-# 提取笔记图片中的文字（OCR）
+# 可选：仅在用户要求或文本强烈提示图片含关键信息时，提取图片文字（OCR）
 python scripts/cli.py extract-feed-image-text \
-  --feed-id FEED_ID --xsec-token XSEC_TOKEN
+  --feed-id FEED_ID --xsec-token XSEC_TOKEN --limit 2
 
 # 图文发布（分步：填写 → 预览 → 确认）
 python scripts/cli.py fill-publish \
