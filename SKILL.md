@@ -84,6 +84,7 @@ metadata:
 | `cli.py list-feeds` | 获取首页推荐 Feed |
 | `cli.py search-feeds` | 关键词搜索笔记 |
 | `cli.py get-feed-detail` | 获取笔记完整内容和评论 |
+| `cli.py extract-feed-image-text` | 下载笔记图片并提取图片文字 |
 | `cli.py user-profile` | 获取用户主页信息 |
 
 ### xhs-interact — 社交互动
@@ -120,19 +121,23 @@ python scripts/cli.py search-feeds --keyword "关键词"
 python scripts/cli.py get-feed-detail \
   --feed-id FEED_ID --xsec-token XSEC_TOKEN
 
-# 6. 发布图文
+# 6. 如笔记图片包含截图/菜单/清单/地图等信息，提取图片文字
+python scripts/cli.py extract-feed-image-text \
+  --feed-id FEED_ID --xsec-token XSEC_TOKEN
+
+# 7. 发布图文
 python scripts/cli.py publish \
   --title-file title.txt \
   --content-file content.txt \
   --images "/abs/path/pic1.jpg"
 
-# 7. 发表评论
+# 8. 发表评论
 python scripts/cli.py post-comment \
   --feed-id FEED_ID \
   --xsec-token XSEC_TOKEN \
   --content "评论内容"
 
-# 8. 点赞
+# 9. 点赞
 python scripts/cli.py like-feed \
   --feed-id FEED_ID --xsec-token XSEC_TOKEN
 ```

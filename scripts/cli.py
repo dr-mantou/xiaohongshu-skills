@@ -182,7 +182,10 @@ def _qrcode_fallback(browser, page, args: argparse.Namespace) -> None:
         "login_method": "qrcode",
         "qrcode_path": qrcode_path,
         "qrcode_image_url": image_url,
-        "message": "验证码发送受限，已切换为二维码登录，请扫码。扫码后运行 wait-login 等待登录结果。",
+        "message": (
+            "验证码发送受限，已切换为二维码登录，请扫码。"
+            "扫码后运行 wait-login 等待登录结果。"
+        ),
     }
     if login_url:
         result["qr_login_url"] = login_url
@@ -287,7 +290,11 @@ def cmd_wait_login(args: argparse.Namespace) -> None:
         _output(
             {
                 "logged_in": success,
-                "message": "登录成功" if success else "等待超时，请重新运行 get-qrcode 获取新二维码",
+                "message": (
+                    "登录成功"
+                    if success
+                    else "等待超时，请重新运行 get-qrcode 获取新二维码"
+                ),
             },
             exit_code=0 if success else 2,
         )
@@ -433,6 +440,89 @@ def cmd_get_feed_detail(args: argparse.Namespace) -> None:
         browser.close()
 
 
+def cmd_extract_feed_image_text(args: argparse.Namespace) -> None:
+    """下载笔记图片并用本地 OCR 提取图片文字。"""
+    import shutil
+    import subprocess
+
+    from image_downloader import ImageDownloader
+    from xhs.feed_detail import get_feed_detail
+
+    tesseract = shutil.which("tesseract")
+    if not tesseract:
+        _output(
+            {
+                "success": False,
+                "error": "tesseract not found",
+                "installHint": (
+                    "Install tesseract-ocr plus language packs, e.g. "
+                    "tesseract-ocr-eng tesseract-ocr-chi-sim tesseract-ocr-chi-tra."
+                ),
+            },
+            exit_code=2,
+        )
+
+    browser, page = _connect(args)
+    try:
+        detail = get_feed_detail(page, args.feed_id, args.xsec_token)
+    finally:
+        browser.close()
+
+    image_urls = [img.url_default for img in detail.note.image_list if img.url_default]
+    if args.limit > 0:
+        image_urls = image_urls[: args.limit]
+
+    save_dir = args.save_dir or os.path.join(os.path.expanduser("~"), ".xhs", "images")
+    downloader = ImageDownloader(save_dir)
+    image_results: list[dict] = []
+
+    for index, url in enumerate(image_urls, start=1):
+        result: dict = {
+            "index": index,
+            "url": url,
+            "path": "",
+            "ocrStatus": "error",
+            "ocrText": "",
+        }
+        try:
+            path = downloader.download_image(url)
+            result["path"] = path
+            proc = subprocess.run(
+                [tesseract, path, "stdout", "-l", args.ocr_lang],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=args.timeout,
+            )
+            if proc.returncode != 0:
+                result["error"] = (proc.stderr or "OCR failed").strip()
+            else:
+                text = proc.stdout.strip()
+                result["ocrText"] = text
+                result["ocrStatus"] = "ok" if text else "empty"
+        except Exception as exc:
+            result["error"] = str(exc)
+        image_results.append(result)
+
+    combined_text = "\n\n".join(
+        f"[image {item['index']}]\n{item['ocrText']}"
+        for item in image_results
+        if item.get("ocrText")
+    )
+    _output(
+        {
+            "note": {
+                "noteId": detail.note.note_id,
+                "title": detail.note.title,
+                "type": detail.note.type,
+                "imageCount": len(detail.note.image_list),
+            },
+            "images": image_results,
+            "combinedText": combined_text,
+        }
+    )
+
+
 def cmd_user_profile(args: argparse.Namespace) -> None:
     """获取用户主页。"""
     from xhs.user_profile import get_user_profile
@@ -569,7 +659,14 @@ def cmd_fill_publish(args: argparse.Namespace) -> None:
                 visibility=args.visibility or "",
             ),
         )
-        _output({"success": True, "title": title, "images": len(image_paths), "status": "表单已填写，等待确认发布"})
+        _output(
+            {
+                "success": True,
+                "title": title,
+                "images": len(image_paths),
+                "status": "表单已填写，等待确认发布",
+            }
+        )
     finally:
         browser.close()
 
@@ -597,7 +694,14 @@ def cmd_fill_publish_video(args: argparse.Namespace) -> None:
                 visibility=args.visibility or "",
             ),
         )
-        _output({"success": True, "title": title, "video": args.video, "status": "视频表单已填写，等待确认发布"})
+        _output(
+            {
+                "success": True,
+                "title": title,
+                "video": args.video,
+                "status": "视频表单已填写，等待确认发布",
+            }
+        )
     finally:
         browser.close()
 
@@ -767,7 +871,10 @@ def build_parser() -> argparse.ArgumentParser:
     sub = subparsers.add_parser("search-feeds", help="搜索 Feeds")
     sub.add_argument("--keyword", required=True, help="搜索关键词")
     sub.add_argument("--sort-by", help="排序: 综合|最新|最多点赞|最多评论|最多收藏")
-    sub.add_argument("--note-type", help="类型: 不限|视频|图文")
+    sub.add_argument(
+        "--note-type",
+        help="类型: 不限|视频|图文|文字|文字+图文|text|text+image|non-video",
+    )
     sub.add_argument("--publish-time", help="时间: 不限|一天内|一周内|半年内")
     sub.add_argument("--search-scope", help="范围: 不限|已看过|未看过|已关注")
     sub.add_argument("--location", help="位置: 不限|同城|附近")
@@ -783,6 +890,20 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_argument("--max-comment-items", type=int, default=0)
     sub.add_argument("--scroll-speed", default="normal", help="slow|normal|fast")
     sub.set_defaults(func=cmd_get_feed_detail)
+
+    # extract-feed-image-text / ocr-feed-images
+    sub = subparsers.add_parser(
+        "extract-feed-image-text",
+        aliases=["ocr-feed-images"],
+        help="下载并 OCR 笔记图片",
+    )
+    sub.add_argument("--feed-id", required=True, help="Feed ID")
+    sub.add_argument("--xsec-token", required=True, help="xsec_token")
+    sub.add_argument("--limit", type=int, default=6, help="最多处理图片数；0 表示全部")
+    sub.add_argument("--save-dir", help="图片保存目录，默认 ~/.xhs/images")
+    sub.add_argument("--ocr-lang", default="chi_sim+chi_tra+eng", help="Tesseract 语言包")
+    sub.add_argument("--timeout", type=int, default=45, help="单张图片 OCR 超时秒数")
+    sub.set_defaults(func=cmd_extract_feed_image_text)
 
     # user-profile
     sub = subparsers.add_parser("user-profile", help="获取用户主页")

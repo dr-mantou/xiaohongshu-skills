@@ -108,10 +108,14 @@ python scripts/cli.py search-feeds --keyword "关键词"
 python scripts/cli.py search-feeds \
   --keyword "关键词" \
   --sort-by "最多点赞" \
-  --note-type "图文"
+  --note-type "文字+图文"
 
 # 查看笔记详情
 python scripts/cli.py get-feed-detail \
+  --feed-id FEED_ID --xsec-token XSEC_TOKEN
+
+# 提取笔记图片中的文字（OCR）
+python scripts/cli.py extract-feed-image-text \
   --feed-id FEED_ID --xsec-token XSEC_TOKEN
 
 # 图文发布（分步：填写 → 预览 → 确认）
@@ -152,6 +156,7 @@ python scripts/cli.py post-comment --feed-id FEED_ID --xsec-token XSEC_TOKEN --c
 | `list-feeds` | 获取首页推荐 Feed |
 | `search-feeds` | 关键词搜索笔记（支持排序/类型/时间/范围/位置筛选） |
 | `get-feed-detail` | 获取笔记完整内容和评论 |
+| `extract-feed-image-text` / `ocr-feed-images` | 下载笔记图片并提取图片文字 |
 | `user-profile` | 获取用户主页信息和帖子列表 |
 | `post-comment` | 对笔记发表评论 |
 | `reply-comment` | 回复指定评论 |

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import time
 
 from .cdp import Page
@@ -22,6 +23,50 @@ _FILTER_OPTIONS: dict[int, list[tuple[int, str]]] = {
     3: [(1, "不限"), (2, "一天内"), (3, "一周内"), (4, "半年内")],
     4: [(1, "不限"), (2, "已看过"), (3, "未看过"), (4, "已关注")],
     5: [(1, "不限"), (2, "同城"), (3, "附近")],
+}
+
+_ALL_NOTE_TYPE_ALIASES = {
+    "",
+    "不限",
+    "全部",
+    "全部类型",
+    "all",
+    "any",
+}
+_VIDEO_NOTE_TYPE_ALIASES = {
+    "视频",
+    "视频笔记",
+    "video",
+    "videos",
+}
+_NORMAL_NOTE_TYPE_ALIASES = {
+    "图文",
+    "图文笔记",
+    "文字",
+    "文字笔记",
+    "文字+图文",
+    "图文+文字",
+    "文字和图文",
+    "非视频",
+    "笔记",
+    "text",
+    "texts",
+    "text+image",
+    "text+images",
+    "textandtext+image",
+    "textandtext+images",
+    "text-image",
+    "text/images",
+    "text&image",
+    "image",
+    "images",
+    "photo",
+    "photos",
+    "normal",
+    "non-video",
+    "nonvideo",
+    "note",
+    "notes",
 }
 
 # 从 __INITIAL_STATE__ 提取搜索结果的 JS
@@ -68,8 +113,6 @@ def _convert_filters(filter_opt: FilterOption) -> list[tuple[int, int]]:
 
     if filter_opt.sort_by:
         result.append(_find_internal_option(1, filter_opt.sort_by))
-    if filter_opt.note_type:
-        result.append(_find_internal_option(2, filter_opt.note_type))
     if filter_opt.publish_time:
         result.append(_find_internal_option(3, filter_opt.publish_time))
     if filter_opt.search_scope:
@@ -78,6 +121,68 @@ def _convert_filters(filter_opt: FilterOption) -> list[tuple[int, int]]:
         result.append(_find_internal_option(5, filter_opt.location))
 
     return result
+
+
+def _normalize_note_type_filter(note_type: str) -> set[str] | None:
+    """Normalize note type aliases into post-filterable XHS note kinds.
+
+    XHS search results distinguish video notes from normal notes. Normal notes
+    cover both text-only and text+image posts, so aliases such as "文字+图文"
+    and "text+image" are intentionally mapped to the same non-video kind.
+    """
+    raw = note_type.strip()
+    if not raw:
+        return None
+
+    parts = [p for p in re.split(r"[,，;；|、]+", raw) if p.strip()]
+    kinds: set[str] = set()
+    unknown: list[str] = []
+
+    for part in parts:
+        alias = part.strip().lower()
+        alias = alias.replace("＋", "+").replace("﹢", "+")
+        alias = alias.replace("_", "-").replace(" ", "")
+
+        if alias in _ALL_NOTE_TYPE_ALIASES:
+            return None
+        if alias in _VIDEO_NOTE_TYPE_ALIASES:
+            kinds.add("video")
+        elif alias in _NORMAL_NOTE_TYPE_ALIASES:
+            kinds.add("normal")
+        else:
+            unknown.append(part.strip())
+
+    if unknown:
+        valid = [
+            "不限",
+            "视频",
+            "图文",
+            "文字",
+            "文字+图文",
+            "text",
+            "text+image",
+            "normal",
+            "non-video",
+        ]
+        raise ValueError(f"未知 note_type: {unknown}，有效值: {valid}")
+
+    if kinds == {"normal", "video"}:
+        return None
+    return kinds or None
+
+
+def _feed_note_kind(feed: Feed) -> str:
+    note_type = (feed.note_card.type or "").strip().lower()
+    if note_type == "video" or feed.note_card.video is not None:
+        return "video"
+    return "normal"
+
+
+def _filter_feeds_by_note_type(feeds: list[Feed], note_type: str) -> list[Feed]:
+    kinds = _normalize_note_type_filter(note_type)
+    if kinds is None:
+        return feeds
+    return [feed for feed in feeds if _feed_note_kind(feed) in kinds]
 
 
 def search_feeds(
@@ -106,6 +211,7 @@ def search_feeds(
 
     # 应用筛选条件
     if filter_option:
+        _normalize_note_type_filter(filter_option.note_type)
         internal_filters = _convert_filters(filter_option)
         if internal_filters:
             _apply_filters(page, internal_filters)
@@ -116,7 +222,12 @@ def search_feeds(
         raise NoFeedsError()
 
     feeds_data = json.loads(result)
-    return [Feed.from_dict(f) for f in feeds_data]
+    feeds = [Feed.from_dict(f) for f in feeds_data]
+    if filter_option:
+        feeds = _filter_feeds_by_note_type(feeds, filter_option.note_type)
+        if not feeds:
+            raise NoFeedsError()
+    return feeds
 
 
 def _wait_for_initial_state(page: Page, timeout: float = 10.0) -> None:

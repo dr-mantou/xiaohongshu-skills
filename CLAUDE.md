@@ -62,6 +62,7 @@ python scripts/cli.py publish --title-file t.txt --content-file c.txt --images p
 | `list-feeds` | list_feeds | 浏览 |
 | `search-feeds` | search_feeds | 浏览 |
 | `get-feed-detail` | get_feed_detail | 浏览 |
+| `extract-feed-image-text` | — | 浏览 / OCR |
 | `user-profile` | user_profile | 浏览 |
 | `post-comment` | post_comment_to_feed | 互动 |
 | `reply-comment` | reply_comment_in_feed | 互动 |

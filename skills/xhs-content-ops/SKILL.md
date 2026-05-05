@@ -36,6 +36,7 @@ metadata:
 | `search-feeds` | 搜索笔记（支持筛选） |
 | `list-feeds` | 获取首页推荐 Feed |
 | `get-feed-detail` | 获取笔记详情和评论 |
+| `extract-feed-image-text` / `ocr-feed-images` | 下载笔记图片并提取图片文字 |
 | `user-profile` | 获取用户主页信息 |
 | `post-comment` | 发表评论（需用户确认） |
 | `like-feed` | 点赞笔记 |
@@ -162,15 +163,20 @@ python scripts/cli.py search-feeds \
 python scripts/cli.py get-feed-detail \
   --feed-id FEED_ID --xsec-token XSEC_TOKEN
 ```
-5. 针对笔记内容生成有价值的评论建议。
-6. 用户确认评论内容后发送：
+5. 如果详情里的 `note.imageList` 可能包含截图、清单、菜单、地图或票价等信息，先提取图片文字：
+```bash
+python scripts/cli.py extract-feed-image-text \
+  --feed-id FEED_ID --xsec-token XSEC_TOKEN
+```
+6. 针对笔记内容生成有价值的评论建议。
+7. 用户确认评论内容后发送：
 ```bash
 python scripts/cli.py post-comment \
   --feed-id FEED_ID \
   --xsec-token XSEC_TOKEN \
   --content "评论内容"
 ```
-7. 可选：点赞或收藏：
+8. 可选：点赞或收藏：
 ```bash
 python scripts/cli.py like-feed \
   --feed-id FEED_ID --xsec-token XSEC_TOKEN

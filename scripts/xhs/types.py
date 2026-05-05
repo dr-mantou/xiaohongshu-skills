@@ -401,7 +401,7 @@ class FilterOption:
     """搜索筛选选项。"""
 
     sort_by: str = ""  # 综合|最新|最多点赞|最多评论|最多收藏
-    note_type: str = ""  # 不限|视频|图文
+    note_type: str = ""  # 不限|视频|图文|文字|文字+图文|text|text+image|non-video
     publish_time: str = ""  # 不限|一天内|一周内|半年内
     search_scope: str = ""  # 不限|已看过|未看过|已关注
     location: str = ""  # 不限|同城|附近

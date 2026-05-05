@@ -36,6 +36,7 @@ metadata:
 | `list-feeds` | 获取首页推荐 Feed |
 | `search-feeds` | 关键词搜索笔记（支持筛选） |
 | `get-feed-detail` | 获取笔记完整内容和评论 |
+| `extract-feed-image-text` / `ocr-feed-images` | 下载笔记图片并提取图片文字 |
 | `user-profile` | 获取用户主页信息 |
 
 ---
@@ -80,13 +81,13 @@ python scripts/cli.py search-feeds --keyword "春招"
 python scripts/cli.py search-feeds \
   --keyword "春招" \
   --sort-by 最新 \
-  --note-type 图文
+  --note-type "文字+图文"
 
 # 完整筛选
 python scripts/cli.py search-feeds \
   --keyword "春招" \
   --sort-by 最多点赞 \
-  --note-type 图文 \
+  --note-type "文字+图文" \
   --publish-time 一周内 \
   --search-scope 未看过
 ```
@@ -96,10 +97,12 @@ python scripts/cli.py search-feeds \
 | 参数 | 可选值 |
 |------|--------|
 | `--sort-by` | 综合、最新、最多点赞、最多评论、最多收藏 |
-| `--note-type` | 不限、视频、图文 |
+| `--note-type` | 不限、视频、图文、文字、文字+图文、text、text+image、normal、non-video |
 | `--publish-time` | 不限、一天内、一周内、半年内 |
 | `--search-scope` | 不限、已看过、未看过、已关注 |
 | `--location` | 不限、同城、附近 |
+
+`文字`、`图文`、`文字+图文`、`text`、`text+image` 都表示非视频笔记。搜索后如发现笔记的 `imageList` 可能包含截图、菜单、清单、地图、票价等有用信息，应继续运行图片 OCR。
 
 #### 搜索结果字段
 
@@ -140,6 +143,18 @@ python scripts/cli.py get-feed-detail \
 ```
 
 输出包含：笔记完整内容、图片列表、互动数据、评论列表。
+
+### 提取图片文字
+
+当详情中的 `note.imageList` 非空，且图片可能包含可用信息时，运行：
+
+```bash
+python scripts/cli.py extract-feed-image-text \
+  --feed-id 67abc1234def567890123456 \
+  --xsec-token XSEC_TOKEN
+```
+
+输出包含每张图片的本地路径、OCR 文本和 `combinedText`。分析旅行、餐厅、优惠、攻略类笔记时，应把正文、评论和 `combinedText` 一起综合判断；OCR 为空时说明图片可能不是文字图，或需要人工/视觉模型复核。
 
 ### 获取用户主页
 
