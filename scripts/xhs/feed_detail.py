@@ -201,25 +201,30 @@ _EXTRACT_DETAIL_JS = """
 
 def _extract_feed_detail(page: Page, feed_id: str) -> FeedDetailResponse:
     """从 __INITIAL_STATE__ 提取 Feed 详情。"""
-    result = None
-    for _ in range(3):
+    note_detail_map: dict = {}
+    deadline = time.monotonic() + 8.0
+    while time.monotonic() < deadline:
         result = page.evaluate(_EXTRACT_DETAIL_JS)
-        if result:
-            break
-        time.sleep(0.2)
+        if not result:
+            time.sleep(0.5)
+            continue
 
-    if not result:
-        raise NoFeedDetailError()
+        note_detail_map = json.loads(result)
+        note_data = note_detail_map.get(feed_id)
+        if note_data:
+            return FeedDetailResponse(
+                note=FeedDetail.from_dict(note_data.get("note", {})),
+                comments=CommentList.from_dict(note_data.get("comments", {})),
+            )
+        time.sleep(0.5)
 
-    note_detail_map = json.loads(result)
-    note_data = note_detail_map.get(feed_id)
-    if not note_data:
-        raise NoFeedDetailError()
-
-    return FeedDetailResponse(
-        note=FeedDetail.from_dict(note_data.get("note", {})),
-        comments=CommentList.from_dict(note_data.get("comments", {})),
-    )
+    if note_detail_map:
+        logger.debug(
+            "noteDetailMap keys did not include feed_id %s: %s",
+            feed_id,
+            note_detail_map.keys(),
+        )
+    raise NoFeedDetailError()
 
 
 # ========== 评论加载状态机 ==========
